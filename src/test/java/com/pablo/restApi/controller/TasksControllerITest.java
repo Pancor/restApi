@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pablo.restApi.data.TasksRepository;
 import com.pablo.restApi.models.Task;
 
+import com.pablo.restApi.utils.matchers.TasksMatchers;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,13 +55,11 @@ public class TasksControllerITest {
     public void getAllTasksWithSuccess() throws Exception {
         String uri = baseUri + "/tasks";
 
-        MvcResult result = mvc.perform(get(uri))
+        mvc.perform(get(uri))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8))
-                .andReturn();
-        List<Task> tasks = Arrays.asList(new ObjectMapper().readValue(result.getResponse().getContentAsString(), Task[].class));
-
-        assertEquals("Lists of Tasks should be equal", tasksRepository.getTasks(), tasks);
+                .andExpect(TasksMatchers.hasSize(3))
+                .andExpect(TasksMatchers.equalsTo(tasksRepository.getTasks()));
     }
 
     @Test
@@ -68,14 +67,38 @@ public class TasksControllerITest {
         int TASK_ID = 1;
         String uri = baseUri + "/task/" + TASK_ID;
 
-        MvcResult result = mvc.perform(get(uri))
+        mvc.perform(get(uri))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8))
-                .andReturn();
-        Task task = new ObjectMapper().readValue(result.getResponse().getContentAsString(), Task.class);
-        Task expectedTask = tasksRepository.getTaskById(TASK_ID);
+                .andExpect(TasksMatchers.equalsTo(tasksRepository.getTaskById(TASK_ID)));
+    }
 
-        assertEquals("Tasks should be the same", expectedTask, task);
+    @Test
+    public void getTaskWithWrongIdType() throws Exception {
+        String TASK_ID = "task_ID";
+        String uri = baseUri + "/task/" + TASK_ID;
+
+        mvc.perform(get(uri))
+            .andExpect(status().is4xxClientError())
+            .andExpect(status().reason("Given arguments are wrong."));
+    }
+
+    @Test
+    public void getTaskWithIdThatDoesNotExistInDataRepository() throws Exception {
+        int TASK_ID = 4;
+        String uri = baseUri + "/task/" + TASK_ID;
+
+        mvc.perform(get(uri))
+                .andExpect(status().is4xxClientError())
+                .andExpect(status().reason("Tasks repository does not contain data with given inputs."));
+    }
+
+    @Test
+    public void callWrongUriThenReturnError() throws Exception {
+        String uri = baseUri + "/wrong/uri";
+
+        mvc.perform(get(uri))
+                .andExpect(status().is4xxClientError());
     }
 
     @Test
@@ -88,6 +111,23 @@ public class TasksControllerITest {
                 .andExpect(status().isOk());
 
         assertEquals("There should be added new task", 4, tasksRepository.getTasks().size());
+    }
+
+    @Test
+    public void insertTaskWithEmptyBody() throws Exception {
+        String uri = baseUri + "/task";
+
+        mvc.perform(post(uri))
+                .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    public void insertTaskWithWrongBody() throws Exception {
+        String uri = baseUri + "/task";
+        String inputJson = "{wrong json}";
+
+        mvc.perform(post(uri).content(inputJson))
+                .andExpect(status().is4xxClientError());
     }
 
     @Test
@@ -111,7 +151,7 @@ public class TasksControllerITest {
         mvc.perform(delete(uri))
                 .andExpect(status().isOk());
 
-        assertEquals("There sould be only two tasks", 2, tasksRepository.getTasks().size());
+        assertEquals("There should be only two tasks", 2, tasksRepository.getTasks().size());
     }
 
     @After

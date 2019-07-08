@@ -27,19 +27,19 @@ public class TasksController {
     }
 
     @PostMapping("/task")
-    public ResponseEntity<?> insertTask(@RequestBody Task newTask) {
+    public ResponseEntity<?> insertTask(@Valid @RequestBody Task newTask) {
         tasksRepository.insertTask(newTask);
         return ResponseEntity.ok(newTask);
     }
 
     @PutMapping("/task/{id}")
-    public ResponseEntity<?> replaceTask(@RequestBody Task newTask, @PathVariable int id) {
+    public ResponseEntity<?> replaceTask(@Valid @PathVariable int id, @Valid @RequestBody Task newTask) {
         tasksRepository.updateTask(id, newTask);
         return ResponseEntity.ok(newTask);
     }
 
     @DeleteMapping("/task/{id}")
-    public ResponseEntity<?> deleteTask(@PathVariable int id) {
+    public ResponseEntity<?> deleteTask(@Valid @PathVariable int id) {
         tasksRepository.deleteTask(id);
         return ResponseEntity.ok(id);
     }
