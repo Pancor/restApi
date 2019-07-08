@@ -4,6 +4,7 @@ import com.pablo.restApi.data.TasksRepository;
 import com.pablo.restApi.models.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;

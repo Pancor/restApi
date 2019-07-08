@@ -12,6 +12,7 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
@@ -22,8 +23,11 @@ import org.springframework.web.context.WebApplicationContext;
 import java.util.Arrays;
 import java.util.List;
 
+import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -32,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @RunWith(SpringRunner.class)
 @SpringBootTest
 @WebAppConfiguration
+@WithMockUser
 public class TasksControllerITest {
 
     @Autowired
@@ -46,7 +51,8 @@ public class TasksControllerITest {
     @Before
     public void setUp() {
         mvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
-                .defaultRequest(post("").contentType(MediaType.APPLICATION_JSON))
+                .apply(springSecurity())
+                .defaultRequest(post("").with(csrf()).contentType(MediaType.APPLICATION_JSON))
                 .alwaysDo(print())
                 .build();
     }
@@ -140,7 +146,7 @@ public class TasksControllerITest {
         mvc.perform(put(uri).content(jsonInput))
                 .andExpect(status().isOk());
 
-        assertTrue("Task: " + updatedTask.toString() + "should be in list", tasksRepository.getTasks().contains(updatedTask));
+        assertTrue("Task: " + updatedTask + " should be in list, but it's not", tasksRepository.getTasks().contains(updatedTask));
     }
 
     @Test
