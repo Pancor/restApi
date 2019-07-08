@@ -5,6 +5,8 @@ import com.pablo.restApi.data.TasksRepository;
 import com.pablo.restApi.models.Task;
 
 import com.pablo.restApi.utils.matchers.TasksMatchers;
+import com.pablo.restApi.utils.users.Admin;
+import com.pablo.restApi.utils.users.BobUser;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -30,13 +32,12 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
 @WebAppConfiguration
-@WithMockUser
+@BobUser
 public class TasksControllerITest {
 
     @Autowired
@@ -54,6 +55,9 @@ public class TasksControllerITest {
                 .apply(springSecurity())
                 .defaultRequest(post("").with(csrf()).contentType(MediaType.APPLICATION_JSON))
                 .alwaysDo(print())
+                .alwaysExpect(header().string("X-XSS-Protection", "1; mode=block"))
+                .alwaysExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .alwaysExpect(header().string("X-Frame-Options", "DENY"))
                 .build();
     }
 
@@ -108,6 +112,7 @@ public class TasksControllerITest {
     }
 
     @Test
+    @Admin
     public void insertTaskWithSuccess() throws Exception {
         String uri = baseUri + "/task";
         Task newTask = new Task("New Task", "New content");
@@ -117,6 +122,18 @@ public class TasksControllerITest {
                 .andExpect(status().isOk());
 
         assertEquals("There should be added new task", 4, tasksRepository.getTasks().size());
+    }
+
+    @Test
+    public void insertTaskWithoutAdminPrivileges() throws Exception {
+        String uri = baseUri + "/task";
+        Task newTask = new Task("New Task", "New content");
+        String inputJson = new ObjectMapper().writeValueAsString(newTask);
+
+        mvc.perform(post(uri).content(inputJson))
+                .andExpect(status().isForbidden());
+
+        assertEquals("There should be added new task", 3, tasksRepository.getTasks().size());
     }
 
     @Test
@@ -137,6 +154,7 @@ public class TasksControllerITest {
     }
 
     @Test
+    @Admin
     public void replaceTaskWithSuccess() throws Exception {
         int TASK_ID = 1;
         String uri = baseUri + "/task/" + TASK_ID;
@@ -150,6 +168,7 @@ public class TasksControllerITest {
     }
 
     @Test
+    @Admin
     public void deleteTaskWithSuccess() throws Exception {
         int TASK_ID = 1;
         String uri = baseUri + "/task/" + TASK_ID;
