@@ -22,6 +22,10 @@ public class Task {
         this.content = content;
     }
 
+    public void setContent(String content) {
+        this.content = content;
+    }
+
     public Long getId() {
         return id;
     }
