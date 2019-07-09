@@ -2,6 +2,7 @@ package com.pablo.restApi.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
@@ -22,25 +23,48 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
         jsr250Enabled = true,
         prePostEnabled = true
 )
-public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+public class WebSecurityConfig {
 
-    @Override
-    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth.inMemoryAuthentication()
-                .withUser("bob").password(encoder().encode("b00b")).roles("USER");
-    }
+    @Bean
+    @Profile("dev")
+    WebSecurityConfigurerAdapter noUser() {
+        return new WebSecurityConfigurerAdapter() {
 
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        http.authorizeRequests()
-                .antMatchers(HttpMethod.DELETE).hasRole("ADMIN")
-                .antMatchers(HttpMethod.POST).hasRole("ADMIN")
-                .antMatchers(HttpMethod.PUT).hasRole("ADMIN")
-                .anyRequest().authenticated();
+            @Override
+            protected void configure(HttpSecurity http) throws Exception {
+                http.authorizeRequests()
+                        .antMatchers(HttpMethod.DELETE).hasRole("ADMIN")
+                        .antMatchers(HttpMethod.POST).hasRole("ADMIN")
+                        .antMatchers(HttpMethod.PUT).hasRole("ADMIN")
+                        .anyRequest().authenticated();
+            }
+        };
     }
 
     @Bean
-    protected PasswordEncoder encoder() {
-        return new BCryptPasswordEncoder();
+    @Profile("test")
+    WebSecurityConfigurerAdapter withUser() {
+        return new WebSecurityConfigurerAdapter() {
+
+            @Override
+            protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+                auth.inMemoryAuthentication()
+                        .withUser("bob").password(encoder().encode("b00b")).roles("USER");
+            }
+
+            @Override
+            protected void configure(HttpSecurity http) throws Exception {
+                http.authorizeRequests()
+                        .antMatchers(HttpMethod.DELETE).hasRole("ADMIN")
+                        .antMatchers(HttpMethod.POST).hasRole("ADMIN")
+                        .antMatchers(HttpMethod.PUT).hasRole("ADMIN")
+                        .anyRequest().authenticated();
+            }
+
+            @Bean
+            protected PasswordEncoder encoder() {
+                return new BCryptPasswordEncoder();
+            }
+        };
     }
 }
