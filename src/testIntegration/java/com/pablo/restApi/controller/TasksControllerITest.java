@@ -22,8 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
 import static junit.framework.TestCase.assertFalse;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -258,6 +257,63 @@ public class TasksControllerITest {
         mvc.perform(delete(uri))
                 .andExpect(status().isBadRequest())
                 .andExpect(status().reason("Tasks repository does not contain data with given inputs."));
+    }
+
+    @Test
+    @Admin
+    public void updateTaskContentWithSuccess() throws Exception {
+        String uri = baseUri + "/task/" + TASK_ID;
+
+        mvc.perform(patch(uri).content(TASK.getContent()))
+                .andExpect(status().isOk());
+
+        assertEquals("Task's content should be the same", TASK.getContent(), tasksRepository.findById(TASK_ID).get().getContent());
+    }
+
+    @Test
+    public void updateTaskContentWithoutAdminPrivilegesThenReturnForbidden() throws Exception {
+        String uri = baseUri + "/task/" + TASK_ID;
+
+        mvc.perform(patch(uri).content(TASK.getContent()))
+                .andExpect(status().isForbidden());
+
+        assertNotEquals("Task's content should not be the same", TASK.getContent(), tasksRepository.findById(TASK_ID).get().getContent());
+    }
+
+    @Test
+    @Admin
+    public void updateTaskContentWithEmptyBodyThenReturnBadRequest() throws Exception {
+        String uri = baseUri + "/task/" + TASK_ID;
+
+        mvc.perform(patch(uri))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @Admin
+    public void updateTaskContentWithoutIdThenReturnMethodNotAllowed() throws Exception {
+        String uri = baseUri + "/task/";
+
+        mvc.perform(patch(uri).content(TASK.getContent()))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    @Admin
+    public void updateTaskContentWithWrongIdTypeThenReturnBadRequest() throws Exception {
+        String uri = baseUri + "/task/" + WRONG_ID_TYPE;
+
+        mvc.perform(patch(uri).content(TASK.getContent()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @Admin
+    public void updateTaskContentWithIdThatIsNotInDatabaseThenReturnBadRequest() throws Exception {
+        String uri = baseUri + "/task/" + TO_HIGH_ID;
+
+        mvc.perform(patch(uri).content(TASK.getContent()))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

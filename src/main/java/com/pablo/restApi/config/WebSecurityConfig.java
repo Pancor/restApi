@@ -32,6 +32,7 @@ public class WebSecurityConfig {
                         .antMatchers(HttpMethod.DELETE).hasRole("ADMIN")
                         .antMatchers(HttpMethod.POST).hasRole("ADMIN")
                         .antMatchers(HttpMethod.PUT).hasRole("ADMIN")
+                        .antMatchers(HttpMethod.PATCH).hasRole("ADMIN")
                         .anyRequest().authenticated();
             }
         };
@@ -55,6 +56,7 @@ public class WebSecurityConfig {
                         .antMatchers(HttpMethod.DELETE).hasRole("ADMIN")
                         .antMatchers(HttpMethod.POST).hasRole("ADMIN")
                         .antMatchers(HttpMethod.PUT).hasRole("ADMIN")
+                        .antMatchers(HttpMethod.PATCH).hasRole("ADMIN")
                         .anyRequest().authenticated();
             }
 

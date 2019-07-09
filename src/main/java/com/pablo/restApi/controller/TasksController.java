@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -41,6 +42,15 @@ public class TasksController {
     public ResponseEntity<?> replaceTask(@Valid @PathVariable long id, @Valid @RequestBody Task newTask) {
         if (tasksRepository.updateTask(id, newTask.getName(), newTask.getContent()) == 1) {
             return ResponseEntity.ok(newTask);
+        } else  {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PatchMapping("/task/{id}")
+    public ResponseEntity<?> updateTask(@Valid @PathVariable long id, @Valid @RequestBody String content) {
+        if (tasksRepository.updateTask(id, content) == 1) {
+            return ResponseEntity.ok().build();
         } else  {
             return ResponseEntity.badRequest().build();
         }
