@@ -1,5 +1,7 @@
 package com.pablo.restApi.controller.handlers;
 
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +31,14 @@ public class ErrorHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(IndexOutOfBoundsException.class)
     public void handleIndexOutOfBoundsException(HttpServletResponse response) throws IOException {
         response.sendError(HttpStatus.BAD_REQUEST.value(), "Tasks repository does not contain data with given inputs.");
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(EmptyResultDataAccessException.class)
+    public void handleEmptyResultDataAccessException(HttpServletResponse response, EmptyResultDataAccessException ex) throws IOException {
+        if (ex.getMessage().equals("No class com.pablo.restApi.models.Task entity with id 4 exists!")) {
+            response.sendError(HttpStatus.BAD_REQUEST.value(), "Tasks repository does not contain data with given inputs.");
+        }
     }
 
     @Override

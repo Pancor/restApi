@@ -2,20 +2,18 @@ package com.pablo.restApi.data;
 
 
 import com.pablo.restApi.models.Task;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.CrudRepository;
 
 import java.util.List;
+import java.util.Optional;
 
-public interface TasksRepository {
+public interface TasksRepository extends CrudRepository<Task, Long> {
 
-    void insertTask(Task task);
+    Optional<Task> findByName(String name);
 
-    Task getTaskById(int id);
-
-    void updateTask(int index, Task task);
-
-    void deleteTask(int index);
-
-    List<Task> getTasks();
-
-    void cleanUp();
+    @Modifying
+    @Query("UPDATE Task t SET t.name = ?2, t.content = ?3 WHERE t.id = ?1")
+    int updateTask(Long id, String name, String content);
 }

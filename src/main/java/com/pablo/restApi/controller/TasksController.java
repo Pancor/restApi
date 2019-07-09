@@ -4,11 +4,10 @@ import com.pablo.restApi.data.TasksRepository;
 import com.pablo.restApi.models.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
@@ -18,30 +17,38 @@ public class TasksController {
     private TasksRepository tasksRepository;
 
     @GetMapping("/tasks")
-    public List<Task> getTasks() {
-        return tasksRepository.getTasks();
+    public Iterable<Task> getTasks() {
+        return tasksRepository.findAll();
     }
 
     @GetMapping("/task/{id}")
-    public Task getTask(@Valid @PathVariable int id) {
-        return tasksRepository.getTaskById(id);
+    public ResponseEntity<?> getTask(@Valid @PathVariable long id) {
+        Optional<Task> task = tasksRepository.findById(id);
+        if (task.isPresent()) {
+            return ResponseEntity.ok(task.get());
+        } else {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PostMapping("/task")
     public ResponseEntity<?> insertTask(@Valid @RequestBody Task newTask) {
-        tasksRepository.insertTask(newTask);
+        tasksRepository.save(newTask);
         return ResponseEntity.ok(newTask);
     }
 
     @PutMapping("/task/{id}")
-    public ResponseEntity<?> replaceTask(@Valid @PathVariable int id, @Valid @RequestBody Task newTask) {
-        tasksRepository.updateTask(id, newTask);
-        return ResponseEntity.ok(newTask);
+    public ResponseEntity<?> replaceTask(@Valid @PathVariable long id, @Valid @RequestBody Task newTask) {
+        if (tasksRepository.updateTask(id, newTask.getName(), newTask.getContent()) == 1) {
+            return ResponseEntity.ok(newTask);
+        } else  {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @DeleteMapping("/task/{id}")
-    public ResponseEntity<?> deleteTask(@Valid @PathVariable int id) {
-        tasksRepository.deleteTask(id);
+    public ResponseEntity<?> deleteTask(@Valid @PathVariable long id) {
+        tasksRepository.deleteById(id);
         return ResponseEntity.ok(id);
     }
 }

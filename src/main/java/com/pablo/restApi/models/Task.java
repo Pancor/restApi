@@ -1,9 +1,17 @@
 package com.pablo.restApi.models;
 
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
 import java.util.Objects;
 
+@Entity
 public class Task {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
     private String name;
     private String content;
 
@@ -12,6 +20,10 @@ public class Task {
     public Task(String name, String content) {
         this.name = name;
         this.content = content;
+    }
+
+    public Long getId() {
+        return id;
     }
 
     public String getName() {
@@ -25,7 +37,8 @@ public class Task {
     @Override
     public String toString() {
         return "Task{" +
-                "name='" + name + '\'' +
+                "id=" + id +
+                ", name='" + name + '\'' +
                 ", content='" + content + '\'' +
                 '}';
     }
