@@ -3,12 +3,10 @@ package com.pablo.restApi.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pablo.restApi.data.TasksRepository;
 import com.pablo.restApi.models.Task;
-
 import com.pablo.restApi.testUtils.matchers.TasksMatchers;
 import com.pablo.restApi.testUtils.users.Admin;
 import com.pablo.restApi.testUtils.users.BobUser;
 import org.assertj.core.util.Lists;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -104,8 +102,8 @@ public class TasksControllerITest {
         String uri = baseUri + "/task/" + WRONG_ID_TYPE;
 
         mvc.perform(get(uri))
-            .andExpect(status().is4xxClientError())
-            .andExpect(status().reason("Given arguments are wrong."));
+                .andExpect(status().is4xxClientError())
+                .andExpect(status().reason("Given arguments are wrong."));
     }
 
     @Test
@@ -268,10 +266,5 @@ public class TasksControllerITest {
 
         mvc.perform(get(uri))
                 .andExpect(status().is4xxClientError());
-    }
-
-    @After
-    public void cehck() {
-        System.out.println(tasksRepository.findAll().toString());
     }
 }

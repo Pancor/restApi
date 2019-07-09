@@ -1,0 +1,37 @@
+
+sourceSets {
+     testIntegration {
+        compileClasspath += sourceSets.main.output + configurations.testCompile
+        runtimeClasspath += output + compileClasspath + configurations.testRuntime
+     }
+}
+
+idea {
+    module {
+        testSourceDirs += sourceSets.testIntegration.java.srcDirs
+        testResourceDirs += sourceSets.testIntegration.resources.srcDirs
+        scopes.TEST.plus += [ configurations.testIntegrationCompile ]
+    }
+}
+
+configurations {
+    testIntegrationCompile.extendsFrom testCompile
+    testIntegrationRuntime.extendsFrom testRuntime
+}
+
+
+task integrationTest(type: Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+
+    testLogging {
+        exceptionFormat = 'full'
+    }
+
+    testClassesDirs = sourceSets.testIntegration.output.classesDirs
+    classpath = sourceSets.testIntegration.runtimeClasspath
+    outputs.upToDateWhen { false }
+    shouldRunAfter test
+}
+
+check.dependsOn integrationTest
