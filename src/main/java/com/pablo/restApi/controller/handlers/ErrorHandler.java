@@ -4,6 +4,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -28,6 +29,11 @@ public class ErrorHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(IndexOutOfBoundsException.class)
     public void handleIndexOutOfBoundsException(HttpServletResponse response) throws IOException {
         response.sendError(HttpStatus.BAD_REQUEST.value(), "Tasks repository does not contain data with given inputs.");
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotWritable(HttpMessageNotWritableException ex, HttpHeaders headers, HttpStatus status, WebRequest request) {
+        return super.handleHttpMessageNotWritable(ex, headers, status, request);
     }
 
     @Override

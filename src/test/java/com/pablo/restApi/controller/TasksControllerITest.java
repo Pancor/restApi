@@ -51,6 +51,12 @@ public class TasksControllerITest {
     private MockMvc mvc;
     private String baseUri = "/api";
 
+    private String WRONG_ID_TYPE = "wrongIdType";
+    private String WRONG_BODY = "{wrong json body}";
+    private ObjectMapper objectMapper = new ObjectMapper();
+    private Task TASK = new Task("New Task", "New content");
+
+
     @Before
     public void setUp() {
         mvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
@@ -75,6 +81,15 @@ public class TasksControllerITest {
     }
 
     @Test
+    public void getAllTasksWithWrongRequestMethodThenExpectForbidden() throws Exception {
+        String uri = baseUri + "/tasks";
+
+        mvc.perform(delete(uri))
+                .andExpect(status().isForbidden())
+                .andExpect(status().reason("Forbidden"));
+    }
+
+    @Test
     public void getTaskWithSuccess() throws Exception {
         int TASK_ID = 1;
         String uri = baseUri + "/task/" + TASK_ID;
@@ -87,8 +102,7 @@ public class TasksControllerITest {
 
     @Test
     public void getTaskWithWrongIdType() throws Exception {
-        String TASK_ID = "task_ID";
-        String uri = baseUri + "/task/" + TASK_ID;
+        String uri = baseUri + "/task/" + WRONG_ID_TYPE;
 
         mvc.perform(get(uri))
             .andExpect(status().is4xxClientError())
@@ -106,19 +120,10 @@ public class TasksControllerITest {
     }
 
     @Test
-    public void callWrongUriThenReturnError() throws Exception {
-        String uri = baseUri + "/wrong/uri";
-
-        mvc.perform(get(uri))
-                .andExpect(status().is4xxClientError());
-    }
-
-    @Test
     @Admin
     public void insertTaskWithSuccess() throws Exception {
         String uri = baseUri + "/task";
-        Task newTask = new Task("New Task", "New content");
-        String inputJson = new ObjectMapper().writeValueAsString(newTask);
+        String inputJson = objectMapper.writeValueAsString(TASK);
 
         mvc.perform(post(uri).content(inputJson))
                 .andExpect(status().isOk());
@@ -129,13 +134,12 @@ public class TasksControllerITest {
     @Test
     public void insertTaskWithoutAdminPrivileges() throws Exception {
         String uri = baseUri + "/task";
-        Task newTask = new Task("New Task", "New content");
-        String inputJson = new ObjectMapper().writeValueAsString(newTask);
+        String inputJson = objectMapper.writeValueAsString(TASK);
 
         mvc.perform(post(uri).content(inputJson))
                 .andExpect(status().isForbidden());
 
-        assertEquals("There should be added new task", 3, tasksRepository.getTasks().size());
+        assertEquals("There should not be added new task", 3, tasksRepository.getTasks().size());
     }
 
     @Test
@@ -149,9 +153,8 @@ public class TasksControllerITest {
     @Test
     public void insertTaskWithWrongBody() throws Exception {
         String uri = baseUri + "/task";
-        String inputJson = "{wrong json}";
 
-        mvc.perform(post(uri).content(inputJson))
+        mvc.perform(post(uri).content(WRONG_BODY))
                 .andExpect(status().is4xxClientError());
     }
 
@@ -160,13 +163,71 @@ public class TasksControllerITest {
     public void replaceTaskWithSuccess() throws Exception {
         int TASK_ID = 1;
         String uri = baseUri + "/task/" + TASK_ID;
-        Task updatedTask = new Task("New Task 2", "Updated content");
-        String jsonInput = new ObjectMapper().writeValueAsString(updatedTask);
+        String inputJson = objectMapper.writeValueAsString(TASK);
 
-        mvc.perform(put(uri).content(jsonInput))
+        mvc.perform(put(uri).content(inputJson))
                 .andExpect(status().isOk());
 
-        assertTrue("Task: " + updatedTask + " should be in list, but it's not", tasksRepository.getTasks().contains(updatedTask));
+        assertTrue("Task: " + TASK + " should be in list, but it's not", tasksRepository.getTasks().contains(TASK));
+    }
+
+    @Test
+    public void replaceTaskWithoutAdminPrivilegesThenReturnForbidden() throws Exception {
+        int TASK_ID = 1;
+        String uri = baseUri + "/task/" + TASK_ID;
+        String inputJson = objectMapper.writeValueAsString(TASK);
+
+        mvc.perform(put(uri).content(inputJson))
+                .andExpect(status().isForbidden())
+                .andExpect(status().reason("Forbidden"));
+
+        assertFalse("Task: " + TASK + " should not be in list, but it is", tasksRepository.getTasks().contains(TASK));
+    }
+
+    @Test
+    @Admin
+    public void replaceTaskWithEmptyIdThenReturnMethodNotAllowed() throws Exception {
+        String uri = baseUri + "/task/";
+        String inputJson = objectMapper.writeValueAsString(TASK);
+
+        mvc.perform(put(uri).content(inputJson))
+                .andExpect(status().isMethodNotAllowed());
+
+        assertFalse("Task: " + TASK + " should not be in list, but it is", tasksRepository.getTasks().contains(TASK));
+    }
+
+    @Test
+    @Admin
+    public void replaceTaskWithTaskIdWhichIsNotInDatabaseThenThrowBadRequest() throws Exception {
+        int TASK_ID = 4;
+        String uri = baseUri + "/task/" + TASK_ID;
+        String inputJson = objectMapper.writeValueAsString(TASK);
+
+        mvc.perform(put(uri).content(inputJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(status().reason("Tasks repository does not contain data with given inputs."));
+
+        assertFalse("Task: " + TASK + " should not be in list, but it is", tasksRepository.getTasks().contains(TASK));
+    }
+
+    @Test
+    @Admin
+    public void replaceTaskWithEmptyBodyThenThrowBadRequest() throws Exception {
+        int TASK_ID = 1;
+        String uri = baseUri + "/task/" + TASK_ID;
+
+        mvc.perform(put(uri))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @Admin
+    public void replaceTaskWithWrongBodyThenThrowBadRequest() throws Exception {
+        int TASK_ID = 4;
+        String uri = baseUri + "/task/" + TASK_ID;
+
+        mvc.perform(put(uri).content(WRONG_BODY))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -179,6 +240,46 @@ public class TasksControllerITest {
                 .andExpect(status().isOk());
 
         assertEquals("There should be only two tasks", 2, tasksRepository.getTasks().size());
+    }
+
+    @Test
+    public void deleteTaskWithoutAdminPrivilegesThenReturnForbidden() throws Exception {
+        int TASK_ID = 1;
+        String uri = baseUri + "/task/" + TASK_ID;
+
+        mvc.perform(delete(uri))
+                .andExpect(status().isForbidden());
+
+        assertEquals("There should be three tasks", 3, tasksRepository.getTasks().size());
+    }
+
+    @Test
+    @Admin
+    public void deleteTaskWithWrongIdTypeThenReturnBadRequest() throws Exception {
+        String uri = baseUri + "/task/" + WRONG_ID_TYPE;
+
+        mvc.perform(delete(uri))
+                .andExpect(status().isBadRequest())
+                .andExpect(status().reason("Given arguments are wrong."));
+    }
+
+    @Test
+    @Admin
+    public void deleteTaskWithTaskIdThatDoesNotBelongToDatabaseThenReturnBadRequest() throws Exception {
+        int TASK_ID = 4;
+        String uri = baseUri + "/task/" + TASK_ID;
+
+        mvc.perform(delete(uri))
+                .andExpect(status().isBadRequest())
+                .andExpect(status().reason("Tasks repository does not contain data with given inputs."));
+    }
+
+    @Test
+    public void callWrongUriThenReturnError() throws Exception {
+        String uri = baseUri + "/wrong/uri";
+
+        mvc.perform(get(uri))
+                .andExpect(status().is4xxClientError());
     }
 
     @After
