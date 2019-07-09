@@ -28,22 +28,11 @@ public class ErrorHandler extends ResponseEntityExceptionHandler {
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(IndexOutOfBoundsException.class)
-    public void handleIndexOutOfBoundsException(HttpServletResponse response) throws IOException {
-        response.sendError(HttpStatus.BAD_REQUEST.value(), "Tasks repository does not contain data with given inputs.");
-    }
-
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(EmptyResultDataAccessException.class)
     public void handleEmptyResultDataAccessException(HttpServletResponse response, EmptyResultDataAccessException ex) throws IOException {
         if (ex.getMessage().equals("No class com.pablo.restApi.models.Task entity with id 4 exists!")) {
             response.sendError(HttpStatus.BAD_REQUEST.value(), "Tasks repository does not contain data with given inputs.");
         }
-    }
-
-    @Override
-    protected ResponseEntity<Object> handleHttpMessageNotWritable(HttpMessageNotWritableException ex, HttpHeaders headers, HttpStatus status, WebRequest request) {
-        return super.handleHttpMessageNotWritable(ex, headers, status, request);
     }
 
     @Override
