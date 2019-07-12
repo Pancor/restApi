@@ -13,4 +13,10 @@ public class MessageController {
     public Message sendMessage(Message msg) {
         return new Message("You just said: " + msg.getMsg());
     }
+
+    @MessageMapping("/status")
+    @SendTo("/topic/status")
+    public Message getStatus() {
+        return new Message("OK");
+    }
 }

@@ -1,15 +1,12 @@
 package com.pablo.restApi.controller;
 
 import com.pablo.restApi.models.Message;
-import com.pablo.restApi.testUtils.users.BobUser;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
-import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
@@ -33,45 +30,48 @@ import static org.junit.Assert.assertEquals;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@BobUser
 @ActiveProfiles("test")
 public class MessageControllerITest {
-
-    private static final String SUBSCRIPTION_TOPIC = "/topic/answer";
 
     @Value("${local.server.port}")
     private String port;
 
     private StompSession session;
     private BlockingQueue<Message> receivedMessages;
+    private CompletableFuture cf;
 
     @Before
     public void setUp() throws InterruptedException, ExecutionException, TimeoutException {
         String URL = "ws://127.0.0.1:" + port + "/messenger";
-        WebSocketHttpHeaders header = getAuthorizationHeader("boob", "b00b");
+        WebSocketHttpHeaders header = getAuthorizationHeaderForUser("boob", "b00b");
 
         List<Transport> transports = Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()));
         WebSocketStompClient client = new WebSocketStompClient(new SockJsClient(transports));
         client.setMessageConverter(new MappingJackson2MessageConverter());
 
+        cf = new CompletableFuture();
         receivedMessages = new LinkedBlockingDeque<>();
-        session = client.connect(URL, header, new CustomSessionHandler()).get(5, TimeUnit.SECONDS);
+        session = client.connect(URL, header, new CustomSessionHandler()).get(3, TimeUnit.SECONDS);
+        cf.join();
     }
 
     @Test
     public void sendMessageByWebSocketThenReceiveIt() throws InterruptedException {
         session.send("/app/send", new Message("mess"));
-        Message response = receivedMessages.poll(5, TimeUnit.SECONDS);
+        Message response = receivedMessages.poll(3, TimeUnit.SECONDS);
 
-        assertEquals(new Message("You just said: mess"), response);
+        assertEquals("Received message should contain message, which was send", new Message("You just said: mess"), response);
     }
 
-    @After
-    public void tearDown() {
-        session.disconnect();
+    @Test
+    public void getServerStatusByWebSocketThenReceiveServerStatus() throws InterruptedException {
+        session.send("/app/status", "");
+        Message response = receivedMessages.poll(3, TimeUnit.SECONDS);
+
+        assertEquals("Server status should always by OK", new Message("OK"), response);
     }
 
-    private WebSocketHttpHeaders getAuthorizationHeader(String username, String plainPassword) {
+    private WebSocketHttpHeaders getAuthorizationHeaderForUser(String username, String plainPassword) {
         String plainCredentials=username + ":" + plainPassword;
         String base64Credentials = Base64.getEncoder().encodeToString(plainCredentials.getBytes());
         final WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
@@ -82,9 +82,15 @@ public class MessageControllerITest {
     private class CustomSessionHandler extends StompSessionHandlerAdapter {
 
         @Override
-        public void handleException(StompSession session, StompCommand command, StompHeaders headers, byte[] payload, Throwable exception) {
-            super.handleException(session, command, headers, payload, exception);
-            System.out.println(exception);
+        public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
+            session.subscribe("/topic/answer", this);
+            session.subscribe("/topic/status", this);
+            cf.complete(null);
+        }
+
+        @Override
+        public void handleFrame(StompHeaders headers, Object payload) {
+            receivedMessages.offer((Message) payload);
         }
 
         @Override
@@ -93,24 +99,15 @@ public class MessageControllerITest {
         }
 
         @Override
-        public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
-            session.subscribe(SUBSCRIPTION_TOPIC, this);
+        public void handleException(StompSession session, StompCommand command, StompHeaders headers, byte[] payload, Throwable exception) {
+            throw new RuntimeException(exception);
         }
 
         @Override
-        public void handleFrame(StompHeaders headers, Object payload) {
-            receivedMessages.offer((Message) payload);
+        public void handleTransportError(StompSession session, Throwable exception) {
+            throw new RuntimeException(exception);
         }
     }
-
-//    @TestConfiguration
-//    static class CustomTaskExecutor {
-//
-//        @Bean
-//        TaskExecutor syncTaskExecutor() {
-//            return new SyncTaskExecutor();
-//        }
-//    }
 }
 
 
