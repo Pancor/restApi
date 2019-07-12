@@ -9,6 +9,7 @@ buildscript {
 
 plugins {
     id 'java'
+    id "org.flywaydb.flyway" version "5.0.7"
 }
 
 group 'restApi'
@@ -31,10 +32,20 @@ repositories {
 
 dependencies {
     compile("org.springframework.boot:spring-boot-starter-web")
+    compile("org.springframework.boot:spring-boot-starter-websocket")
     compile("org.springframework.boot:spring-boot-starter-security")
+    compile("org.springframework.security:spring-security-messaging")
     compile("org.springframework.boot:spring-boot-starter-data-jpa")
     compile("com.h2database:h2")
+    compile("org.mariadb.jdbc:mariadb-java-client:2.1.2")
     
     testCompile('org.springframework.boot:spring-boot-starter-test')
     testCompile('org.springframework.security:spring-security-test')
+}
+
+flywayBaseline.dependsOn build
+flywayMigrate.dependsOn build
+
+flyway {
+    locations = [ 'filesystem:./db/migration', 'filesystem:./sql']
 }

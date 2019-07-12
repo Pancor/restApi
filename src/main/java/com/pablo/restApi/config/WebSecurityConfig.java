@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -21,25 +22,25 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 )
 public class WebSecurityConfig {
 
-    @Bean
-    @Profile("dev")
-    WebSecurityConfigurerAdapter noUser() {
-        return new WebSecurityConfigurerAdapter() {
+//    @Bean
+//    @Profile("dev")
+//    WebSecurityConfigurerAdapter noUser() {
+//        return new WebSecurityConfigurerAdapter() {
+//
+//            @Override
+//            protected void configure(HttpSecurity http) throws Exception {
+//                http.authorizeRequests()
+//                        .antMatchers(HttpMethod.DELETE).hasRole("ADMIN")
+//                        .antMatchers(HttpMethod.POST).hasRole("ADMIN")
+//                        .antMatchers(HttpMethod.PUT).hasRole("ADMIN")
+//                        .antMatchers(HttpMethod.PATCH).hasRole("ADMIN")
+//                        .anyRequest().authenticated();
+//            }
+//        };
+//    }
 
-            @Override
-            protected void configure(HttpSecurity http) throws Exception {
-                http.authorizeRequests()
-                        .antMatchers(HttpMethod.DELETE).hasRole("ADMIN")
-                        .antMatchers(HttpMethod.POST).hasRole("ADMIN")
-                        .antMatchers(HttpMethod.PUT).hasRole("ADMIN")
-                        .antMatchers(HttpMethod.PATCH).hasRole("ADMIN")
-                        .anyRequest().authenticated();
-            }
-        };
-    }
-
     @Bean
-    @Profile("test")
+//    @Profile("test")
     WebSecurityConfigurerAdapter withUser() {
         return new WebSecurityConfigurerAdapter() {
 
@@ -52,11 +53,18 @@ public class WebSecurityConfig {
 
             @Override
             protected void configure(HttpSecurity http) throws Exception {
-                http.authorizeRequests()
-                        .antMatchers(HttpMethod.DELETE).hasRole("ADMIN")
-                        .antMatchers(HttpMethod.POST).hasRole("ADMIN")
-                        .antMatchers(HttpMethod.PUT).hasRole("ADMIN")
-                        .antMatchers(HttpMethod.PATCH).hasRole("ADMIN")
+                http
+                        .cors().and().csrf().disable()
+                        .httpBasic().disable()
+                        .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
+                        .authorizeRequests()
+                            .antMatchers(HttpMethod.DELETE).hasRole("ADMIN")
+                            .antMatchers(HttpMethod.POST).hasRole("ADMIN")
+                            .antMatchers(HttpMethod.PUT).hasRole("ADMIN")
+                            .antMatchers(HttpMethod.PATCH).hasRole("ADMIN")
+                            .antMatchers("/messenger/**").permitAll()
+                            .antMatchers("/app/**").permitAll()
+                            .antMatchers("/topic/**").permitAll()
                         .anyRequest().authenticated();
             }
 
