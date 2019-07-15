@@ -1,9 +1,10 @@
 package com.pablo.restApi.testUtils.helpers;
 
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
-import org.springframework.messaging.simp.stomp.*;
-import org.springframework.messaging.simp.stomp.StompSession.Subscription;
-import org.springframework.stereotype.Component;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaders;
+import org.springframework.messaging.simp.stomp.StompSession;
+import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
@@ -21,25 +22,19 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+@Service
 public class StompClientHelper {
 
     private WebSocketStompClient client;
     private StompSession session;
-
-    private String URL;
-    private WebSocketHttpHeaders headers;
-    private CompletableFuture<Object> result;
     private CustomSessionHandler handler;
 
-    public StompClientHelper(String URL, WebSocketHttpHeaders headers) {
-        this.URL = URL;
-        this.headers = headers;
-        this.result = new CompletableFuture<>();
+    public StompClientHelper() {
         this.handler = new CustomSessionHandler();
-        createClient();
+        createStompClient();
     }
 
-    public Supplier<StompSession> connect() {
+    public Supplier<StompSession> connect(String URL, WebSocketHttpHeaders headers) {
         return () -> {
             try {
                 return session = client.connect(URL, headers, handler).get();
@@ -49,19 +44,29 @@ public class StompClientHelper {
         };
     }
 
-    public Function<StompSession, Subscription> subscribe(String destination) {
-        return stompSession -> session.subscribe(destination, handler);
-    }
-
-    public Function<Subscription, CompletionStage<Object>> send(String destination, Object payload, Class responseType) {
-        return subscription -> {
-            handler.setPayloadType(responseType);
-            session.send(destination, payload);
-            return result;
+    public Function<StompSession, StompSession> subscribeTo(String destination) {
+        return stompSession -> {
+            stompSession.subscribe(destination, handler);
+            return stompSession;
         };
     }
 
-    private void createClient() {
+    public Function<StompSession, CompletionStage<Object>> send(String destination, Object payload, Class responseType) {
+        return stompSession -> {
+            handler.setPayloadType(responseType);
+            stompSession.send(destination, payload);
+            return handler.getResult();
+        };
+    }
+
+    public CompletableFuture<Void> cleanUp() {
+        return CompletableFuture.runAsync(() -> {
+            session.disconnect();
+            handler.clear();
+        });
+    }
+
+    private void createStompClient() {
         List<Transport> transports = Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()));
         client = new WebSocketStompClient(new SockJsClient(transports));
         client.setMessageConverter(new MappingJackson2MessageConverter());
@@ -69,7 +74,12 @@ public class StompClientHelper {
 
     private class CustomSessionHandler extends StompSessionHandlerAdapter {
 
+        private CompletableFuture<Object> result;
         private Class payloadType;
+
+        CustomSessionHandler() {
+            result = new CompletableFuture<>();
+        }
 
         @Override
         public void handleFrame(StompHeaders headers, Object payload) {
@@ -93,6 +103,14 @@ public class StompClientHelper {
 
         void setPayloadType(Class payloadType) {
             this.payloadType = payloadType;
+        }
+
+        CompletableFuture<Object> getResult() {
+            return result;
+        }
+
+        void clear() {
+            result = new CompletableFuture<>();
         }
     }
 }

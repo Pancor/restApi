@@ -23,8 +23,8 @@ apply plugin: 'io.spring.dependency-management'
 
 apply from: "$rootDir/integration-test.gradle"
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+sourceCompatibility = 1.11
+targetCompatibility = 1.11
 
 repositories {
     mavenCentral()

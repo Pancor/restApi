@@ -2,71 +2,79 @@ package com.pablo.restApi.controller;
 
 import com.pablo.restApi.models.Message;
 import com.pablo.restApi.testUtils.helpers.StompClientHelper;
+import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.messaging.converter.MappingJackson2MessageConverter;
-import org.springframework.messaging.simp.stomp.StompCommand;
-import org.springframework.messaging.simp.stomp.StompHeaders;
+import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.messaging.simp.stomp.StompSession;
-import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.socket.WebSocketHttpHeaders;
-import org.springframework.web.socket.client.standard.StandardWebSocketClient;
-import org.springframework.web.socket.messaging.WebSocketStompClient;
-import org.springframework.web.socket.sockjs.client.SockJsClient;
-import org.springframework.web.socket.sockjs.client.Transport;
-import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
-import java.lang.reflect.Type;
 import java.util.Base64;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 public class MessageControllerITest {
 
-    @Value("${local.server.port}")
+    @LocalServerPort
     private String port;
 
+    @Autowired
     private StompClientHelper stompClientHelper;
-    private CompletableFuture<StompSession> cf;
+
+    private CompletableFuture<StompSession> stompSession;
 
     @Before
     public void setUp() {
         String URL = "ws://localhost:" + port + "/messenger";
         WebSocketHttpHeaders header = getAuthorizationHeaderForUser("boob", "b00b");
-        stompClientHelper = new StompClientHelper(URL, header);
-        cf = CompletableFuture.supplyAsync(stompClientHelper.connect());
+        stompSession = CompletableFuture.supplyAsync(stompClientHelper.connect(URL, header));
     }
 
     @Test
     public void sendMessageByWebSocketThenReceiveIt() {
-        Message response = (Message) cf.thenApply(stompClientHelper.subscribe("/topic/answer"))
+        Message response = (Message) stompSession.thenApply(stompClientHelper.subscribeTo("/topic/answer"))
                 .thenCompose(stompClientHelper.send("/app/send", new Message("mess"), Message.class))
+                .orTimeout(3, TimeUnit.SECONDS)
                 .join();
 
-        assertEquals("Received message should contain message, which was send", new Message("You just said: mess"), response);
+        assertEquals("Received message should contain message, which was send",
+                new Message("You just said: mess"), response);
+    }
+
+    @Test
+    public void sendEmptyMessageByWebSocketThenReceiveResponse() {
+        Message response = (Message) stompSession.thenApply(stompClientHelper.subscribeTo("/topic/answer"))
+                .thenCompose(stompClientHelper.send("/app/send", new Message(""), Message.class))
+                .orTimeout(3, TimeUnit.SECONDS)
+                .join();
+
+        assertEquals("Received message should contain only server message without user message",
+                new Message("You just said: "), response);
     }
 
     @Test
     public void getServerStatusByWebSocketThenReceiveServerStatus() {
-        Message response = (Message) cf.thenApply(stompClientHelper.subscribe("/topic/status"))
+        Message response = (Message) stompSession.thenApply(stompClientHelper.subscribeTo("/topic/status"))
                 .thenCompose(stompClientHelper.send("/app/status", new Message(""), Message.class))
+                .orTimeout(3, TimeUnit.SECONDS)
                 .join();
 
-        assertEquals("Server status should always by OK", new Message("OK"), response);
+        assertEquals("Server status should always be OK", new Message("OK"), response);
+    }
+
+    @After
+    public void cleanUp() {
+        stompClientHelper.cleanUp().join();
     }
 
     private WebSocketHttpHeaders getAuthorizationHeaderForUser(String username, String plainPassword) {
