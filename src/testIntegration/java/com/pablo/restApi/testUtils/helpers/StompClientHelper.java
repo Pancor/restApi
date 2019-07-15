@@ -1,8 +1,10 @@
 package com.pablo.restApi.testUtils.helpers;
 
-import com.pablo.restApi.models.Message;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.stomp.*;
+import org.springframework.messaging.simp.stomp.StompSession.Subscription;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
@@ -14,7 +16,10 @@ import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class StompClientHelper {
 
@@ -23,8 +28,8 @@ public class StompClientHelper {
 
     private String URL;
     private WebSocketHttpHeaders headers;
-    private CustomSessionHandler handler;
     private CompletableFuture<Object> result;
+    private CustomSessionHandler handler;
 
     public StompClientHelper(String URL, WebSocketHttpHeaders headers) {
         this.URL = URL;
@@ -34,27 +39,26 @@ public class StompClientHelper {
         createClient();
     }
 
-    public CompletableFuture<StompSession> connect() {
-            return CompletableFuture.supplyAsync(() -> {
-                        try {
-                            return session = client.connect(URL, headers, handler).get();
-                        } catch (InterruptedException | ExecutionException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-            );
+    public Supplier<StompSession> connect() {
+        return () -> {
+            try {
+                return session = client.connect(URL, headers, handler).get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        };
     }
 
-    public CompletableFuture<Void> subscribe(String destination) {
-        return CompletableFuture.runAsync(() -> session.subscribe(destination, handler));
+    public Function<StompSession, Subscription> subscribe(String destination) {
+        return stompSession -> session.subscribe(destination, handler);
     }
 
-    public CompletableFuture<Object> send(String destination, Object payload, Class responseType) {
-        handler.setPayloadType(responseType);
-        return CompletableFuture.supplyAsync(() -> {
+    public Function<Subscription, CompletionStage<Object>> send(String destination, Object payload, Class responseType) {
+        return subscription -> {
+            handler.setPayloadType(responseType);
             session.send(destination, payload);
             return result;
-        });
+        };
     }
 
     private void createClient() {
@@ -66,11 +70,6 @@ public class StompClientHelper {
     private class CustomSessionHandler extends StompSessionHandlerAdapter {
 
         private Class payloadType;
-
-        @Override
-        public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
-
-        }
 
         @Override
         public void handleFrame(StompHeaders headers, Object payload) {

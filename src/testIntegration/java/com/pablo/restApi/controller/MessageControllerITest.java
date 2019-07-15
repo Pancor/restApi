@@ -1,9 +1,12 @@
 package com.pablo.restApi.controller;
 
 import com.pablo.restApi.models.Message;
+import com.pablo.restApi.testUtils.helpers.StompClientHelper;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
@@ -37,37 +40,31 @@ public class MessageControllerITest {
     @Value("${local.server.port}")
     private String port;
 
-    private StompSession session;
-    private BlockingQueue<Message> receivedMessages;
-    private CompletableFuture cf;
+    private StompClientHelper stompClientHelper;
+    private CompletableFuture<StompSession> cf;
 
     @Before
-    public void setUp() throws InterruptedException, ExecutionException, TimeoutException {
+    public void setUp() {
         String URL = "ws://localhost:" + port + "/messenger";
         WebSocketHttpHeaders header = getAuthorizationHeaderForUser("boob", "b00b");
-
-        List<Transport> transports = Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()));
-        WebSocketStompClient client = new WebSocketStompClient(new SockJsClient(transports));
-        client.setMessageConverter(new MappingJackson2MessageConverter());
-
-        cf = new CompletableFuture();
-        receivedMessages = new LinkedBlockingDeque<>();
-        session = client.connect(URL, header, new CustomSessionHandler()).get(3, TimeUnit.SECONDS);
-        cf.join();
+        stompClientHelper = new StompClientHelper(URL, header);
+        cf = CompletableFuture.supplyAsync(stompClientHelper.connect());
     }
 
     @Test
-    public void sendMessageByWebSocketThenReceiveIt() throws InterruptedException {
-        session.send("/app/send", new Message("mess"));
-        Message response = receivedMessages.poll(3, TimeUnit.SECONDS);
+    public void sendMessageByWebSocketThenReceiveIt() {
+        Message response = (Message) cf.thenApply(stompClientHelper.subscribe("/topic/answer"))
+                .thenCompose(stompClientHelper.send("/app/send", new Message("mess"), Message.class))
+                .join();
 
         assertEquals("Received message should contain message, which was send", new Message("You just said: mess"), response);
     }
 
     @Test
-    public void getServerStatusByWebSocketThenReceiveServerStatus() throws InterruptedException {
-        session.send("/app/status", "");
-        Message response = receivedMessages.poll(3, TimeUnit.SECONDS);
+    public void getServerStatusByWebSocketThenReceiveServerStatus() {
+        Message response = (Message) cf.thenApply(stompClientHelper.subscribe("/topic/status"))
+                .thenCompose(stompClientHelper.send("/app/status", new Message(""), Message.class))
+                .join();
 
         assertEquals("Server status should always by OK", new Message("OK"), response);
     }
@@ -75,39 +72,9 @@ public class MessageControllerITest {
     private WebSocketHttpHeaders getAuthorizationHeaderForUser(String username, String plainPassword) {
         String plainCredentials=username + ":" + plainPassword;
         String base64Credentials = Base64.getEncoder().encodeToString(plainCredentials.getBytes());
-        final WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
+        WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
         headers.add("Authorization", "Basic " + base64Credentials);
         return headers;
-    }
-
-    private class CustomSessionHandler extends StompSessionHandlerAdapter {
-
-        @Override
-        public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
-            session.subscribe("/topic/answer", this);
-            session.subscribe("/topic/status", this);
-            cf.complete(null);
-        }
-
-        @Override
-        public void handleFrame(StompHeaders headers, Object payload) {
-            receivedMessages.offer((Message) payload);
-        }
-
-        @Override
-        public Type getPayloadType(StompHeaders headers) {
-            return Message.class;
-        }
-
-        @Override
-        public void handleException(StompSession session, StompCommand command, StompHeaders headers, byte[] payload, Throwable exception) {
-            throw new RuntimeException(exception);
-        }
-
-        @Override
-        public void handleTransportError(StompSession session, Throwable exception) {
-            throw new RuntimeException(exception);
-        }
     }
 }
 
