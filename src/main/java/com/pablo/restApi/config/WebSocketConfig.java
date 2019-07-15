@@ -25,14 +25,14 @@ public class WebSocketConfig extends AbstractSecurityWebSocketMessageBrokerConfi
         registry.setApplicationDestinationPrefixes("/app");
         registry.enableSimpleBroker("/topic");
     }
-//
-//    @Override
-//    protected void configureInbound(MessageSecurityMetadataSourceRegistry messages) {
+
+    @Override
+    protected void configureInbound(MessageSecurityMetadataSourceRegistry messages) {
 //        messages
 //                .nullDestMatcher().authenticated()
-//                .simpSubscribeDestMatchers("/user/**", "/topic/**").hasRole("USER")
+//                .simpSubscribeDestMatchers("/app/**", "/topic/**").hasRole("USER")
 //                .anyMessage().authenticated();
-//    }
+    }
 
     @Override
     protected boolean sameOriginDisabled() {

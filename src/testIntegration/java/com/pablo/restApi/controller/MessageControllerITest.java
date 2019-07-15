@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.concurrent.*;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -42,7 +43,7 @@ public class MessageControllerITest {
 
     @Before
     public void setUp() throws InterruptedException, ExecutionException, TimeoutException {
-        String URL = "ws://127.0.0.1:" + port + "/messenger";
+        String URL = "ws://localhost:" + port + "/messenger";
         WebSocketHttpHeaders header = getAuthorizationHeaderForUser("boob", "b00b");
 
         List<Transport> transports = Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()));
