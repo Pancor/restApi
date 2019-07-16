@@ -35,13 +35,7 @@ public class StompClientHelper {
     }
 
     public Supplier<StompSession> connect(String URL, WebSocketHttpHeaders headers) {
-        return () -> {
-            try {
-                return session = client.connect(URL, headers, handler).get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        };
+        return () -> session = client.connect(URL, headers, handler).completable().join();
     }
 
     public Function<StompSession, StompSession> subscribeTo(String destination) {

@@ -78,7 +78,7 @@ public class MessageControllerITest {
     }
 
     private WebSocketHttpHeaders getAuthorizationHeaderForUser(String username, String plainPassword) {
-        String plainCredentials=username + ":" + plainPassword;
+        String plainCredentials = username + ":" + plainPassword;
         String base64Credentials = Base64.getEncoder().encodeToString(plainCredentials.getBytes());
         WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
         headers.add("Authorization", "Basic " + base64Credentials);

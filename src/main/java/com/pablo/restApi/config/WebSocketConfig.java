@@ -28,10 +28,8 @@ public class WebSocketConfig extends AbstractSecurityWebSocketMessageBrokerConfi
 
     @Override
     protected void configureInbound(MessageSecurityMetadataSourceRegistry messages) {
-//        messages
-//                .nullDestMatcher().authenticated()
-//                .simpSubscribeDestMatchers("/app/**", "/topic/**").hasRole("USER")
-//                .anyMessage().authenticated();
+        messages
+                .simpSubscribeDestMatchers("/app/**").hasRole("USER");
     }
 
     @Override
