@@ -15,4 +15,4 @@ jobs:
           path: app/build/reports
           destination: reports
       - store_test_results:
-          path: app/build/test-results
+          path: build/reports/tests/integrationTest
