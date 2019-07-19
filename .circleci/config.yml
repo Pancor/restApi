@@ -5,4 +5,14 @@ jobs:
       - image: circleci/openjdk:11.0.1-jdk
     steps:
       - checkout
-      - run: echo "hello Pablo"
+      - run:
+          name: Run unit tests
+          command: ./gradlew test
+      - run:
+          name: Run integration tests
+          command: ./gradlew integrationTest
+      - store_artifacts:
+          path: app/build/reports
+          destination: reports
+      - store_test_results:
+          path: app/build/test-results
