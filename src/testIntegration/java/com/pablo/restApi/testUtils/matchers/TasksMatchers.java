@@ -1,6 +1,7 @@
 package com.pablo.restApi.testUtils.matchers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pablo.restApi.models.Result;
 import com.pablo.restApi.models.Task;
 import org.springframework.test.web.servlet.ResultMatcher;
 
@@ -13,7 +14,8 @@ public class TasksMatchers {
 
     public static ResultMatcher hasSize(int expectedSize) {
         return result -> {
-            List<Task> tasks = Arrays.asList(new ObjectMapper().readValue(result.getResponse().getContentAsString(), Task[].class));
+            Result response = new ObjectMapper().readValue(result.getResponse().getContentAsString(), Result.class);
+            List<Task> tasks = response.getResult();
             assertEquals("List: " + tasks.toString() + " has size: " + tasks.size() + ", but expected was: " + expectedSize, expectedSize, tasks.size());
         };
     }
@@ -27,7 +29,8 @@ public class TasksMatchers {
 
     public static ResultMatcher equalsTo(List<Task> expectedTasks) {
         return result -> {
-            List<Task> tasks = Arrays.asList(new ObjectMapper().readValue(result.getResponse().getContentAsString(), Task[].class));
+            Result response = new ObjectMapper().readValue(result.getResponse().getContentAsString(), Result.class);
+            List<Task> tasks = response.getResult();
             assertEquals("List from request: " + tasks.toString() + "is not equal to expected: " + expectedTasks.toString(), expectedTasks, tasks);
         };
     }

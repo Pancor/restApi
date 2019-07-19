@@ -10,8 +10,16 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.PrintWriter;
 
 @Configuration
 @EnableWebSecurity
@@ -29,16 +37,16 @@ public class WebSecurityConfig {
             @Override
             protected void configure(AuthenticationManagerBuilder auth) throws Exception {
                 auth.inMemoryAuthentication()
-                        .withUser("admin").password(encoder().encode("@dmin")).roles("ADMIN", "USER")
-                        .and().withUser("bob").password(encoder().encode("b00b")).roles("USER");
+                        .withUser("admin").password("{noop}@dmin").roles("ADMIN", "USER")
+                        .and().withUser("bob").password("{noop}b00b").roles("USER");
             }
 
             @Override
             protected void configure(HttpSecurity http) throws Exception {
                 http
                         .cors().and().csrf().disable()
-                        .httpBasic().disable()
                         .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
+                        .httpBasic().realmName("TEST").authenticationEntryPoint(getBasicAuthEntryPoint()).and()
                         .authorizeRequests()
                             .antMatchers(HttpMethod.DELETE).hasRole("ADMIN")
                             .antMatchers(HttpMethod.POST).hasRole("ADMIN")
@@ -51,9 +59,30 @@ public class WebSecurityConfig {
             }
 
             @Bean
-            PasswordEncoder encoder() {
-                return new BCryptPasswordEncoder();
+            public CustomBasicAuthenticationEntryPoint getBasicAuthEntryPoint(){
+                return new CustomBasicAuthenticationEntryPoint();
             }
         };
+    }
+
+    public class CustomBasicAuthenticationEntryPoint extends BasicAuthenticationEntryPoint {
+
+        @Override
+        public void commence(final HttpServletRequest request,
+                             final HttpServletResponse response,
+                             final AuthenticationException authException) throws IOException, ServletException {
+            //Authentication failed, send error response.
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.addHeader("WWW-Authenticate", "Basic realm=" + getRealmName() + "");
+
+            PrintWriter writer = response.getWriter();
+            writer.println("HTTP Status 401 : " + authException.getMessage());
+        }
+
+        @Override
+        public void afterPropertiesSet() throws Exception {
+            setRealmName("TEST");
+            super.afterPropertiesSet();
+        }
     }
 }

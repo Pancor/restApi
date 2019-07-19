@@ -1,14 +1,14 @@
 package com.pablo.restApi.controller;
 
 import com.pablo.restApi.data.TasksRepository;
+import com.pablo.restApi.models.Result;
 import com.pablo.restApi.models.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api")
@@ -18,8 +18,11 @@ public class TasksController {
     private TasksRepository tasksRepository;
 
     @GetMapping("/tasks")
-    public Iterable<Task> getTasks() {
-        return tasksRepository.findAll();
+    public ResponseEntity<Result> getTasks() {
+        List<Task> tasks = new ArrayList<>();
+        tasksRepository.findAll().iterator().forEachRemaining(tasks::add);
+        Result result = new Result(tasks);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/task/{id}")
@@ -33,9 +36,10 @@ public class TasksController {
     }
 
     @PostMapping("/task")
-    public ResponseEntity<?> insertTask(@Valid @RequestBody Task newTask) {
+    public ResponseEntity<Result> insertTask(@Valid @RequestBody Task newTask) {
         tasksRepository.save(newTask);
-        return ResponseEntity.ok(newTask);
+        Result result = new Result(Collections.singletonList(newTask));
+        return ResponseEntity.ok(result);
     }
 
     @PutMapping("/task/{id}")
@@ -49,6 +53,15 @@ public class TasksController {
 
     @PatchMapping("/task/{id}")
     public ResponseEntity<?> updateTask(@Valid @PathVariable long id, @Valid @RequestBody String content) {
+        if (tasksRepository.updateTask(id, content) == 1) {
+            return ResponseEntity.ok().build();
+        } else  {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/task/{id}")
+    public ResponseEntity<?> updateTaskWithoutPatch(@Valid @PathVariable long id, @Valid @RequestBody String content) {
         if (tasksRepository.updateTask(id, content) == 1) {
             return ResponseEntity.ok().build();
         } else  {
