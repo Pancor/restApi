@@ -7,10 +7,10 @@ jobs:
       - checkout
       - run:
           name: Run unit tests
-          command: ./gradlew test
+          command: gradle test
       - run:
           name: Run integration tests
-          command: ./gradlew integrationTest
+          command: gradle integrationTest
       - store_artifacts:
           path: app/build/reports
           destination: reports
